@@ -22,17 +22,18 @@ def load_all_images_from_folder(folder, n_max):
 
 
 def take_rectangle_of_image(image, rect_centre, rect_width, rect_height):
-    left_boundary = np.round(rect_centre[0] - rect_width / 2)
-    right_boundary = np.round(rect_centre[0] + rect_width / 2)
-    top_boundary = np.round(rect_centre[1] - rect_height / 2)
+    width, height   = image.size
+    
+    left_boundary   = np.round(rect_centre[0] - rect_width / 2)
+    top_boundary    = np.round(rect_centre[1] - rect_height / 2)
+    right_boundary  = np.round(rect_centre[0] + rect_width / 2)
     bottom_boundary = np.round(rect_centre[1] + rect_height / 2)
-    width, height = image.size
 
-    assert left_boundary >= 0
-    assert right_boundary < width
-    assert top_boundary >= 0
-    assert bottom_boundary < height
-
+    left_boundary   = np.minimum(width - rect_width,   np.maximum(0,           left_boundary))
+    top_boundary    = np.minimum(height - rect_height, np.maximum(0,           top_boundary))
+    right_boundary  = np.minimum(width,                np.maximum(rect_width,  right_boundary))
+    bottom_boundary = np.minimum(height,               np.maximum(rect_height, top_boundary))
+   
     crop_area = (left_boundary, top_boundary, right_boundary, bottom_boundary)
 
     return image.crop(crop_area)
@@ -41,9 +42,12 @@ def take_rectangle_of_image(image, rect_centre, rect_width, rect_height):
 def draw_rectangle_on_image(image, rect_centre, rect_width, rect_height):
     ax = plt.axes()
     ax.imshow(image)
-    top_left_corner = [None, None]
-    top_left_corner[0] = rect_centre[0] - rect_width/2
-    top_left_corner[1] = rect_centre[1] - rect_height/ 2
+    width, height = image.size
+
+    top_left_corner    = [None, None]
+    top_left_corner[0] = np.minimum(width-rect_width,   np.maximum(0, rect_centre[0] - rect_width/2))
+    top_left_corner[1] = np.minimum(height-rect_height, np.maximum(0, rect_centre[1] - rect_height/ 2))
+   
     rect = patches.Rectangle(top_left_corner, rect_width, rect_height, facecolor='None', edgecolor='white')
     ax.add_patch(rect)
     plt.show()
