@@ -1,6 +1,8 @@
 import os
 
 from PIL import Image
+import matplotlib.patches as patches
+import matplotlib.pyplot as plt
 
 import numpy as np
 
@@ -34,3 +36,15 @@ def take_rectangle_of_image(image, rect_centre, rect_width, rect_height):
     crop_area = (left_boundary, top_boundary, right_boundary, bottom_boundary)
 
     return image.crop(crop_area)
+
+
+def draw_rectangle_on_image(image, rect_centre, rect_width, rect_height):
+    ax = plt.axes()
+    ax.imshow(image)
+    top_left_corner = [None, None]
+    top_left_corner[0] = rect_centre[0] - rect_width/2
+    top_left_corner[1] = rect_centre[1] - rect_height/ 2
+    rect = patches.Rectangle(top_left_corner, rect_width, rect_height, facecolor='None', edgecolor='white')
+    ax.add_patch(rect)
+    plt.show()
+
