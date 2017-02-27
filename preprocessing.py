@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 
+import urllib, json
 
 def load_all_images_from_folder(folder, n_max):
     list_of_files = os.listdir(folder)
@@ -48,3 +49,19 @@ def draw_rectangle_on_image(image, rect_centre, rect_width, rect_height):
     ax.add_patch(rect)
     plt.show()
 
+
+def load_json():
+    json_path = r'C:\Users\Mark_\KaggleNature\kaggleNatureConservancy/alb_labels.json'
+    json_file = open(json_path)
+    data = json.load(json_file)
+    d = dict()
+    for cell in data:
+        name = cell["filename"]
+        points = cell["annotations"]
+
+        points_tuple = []
+        for point in points:
+            points_tuple.append((point["x"], point["y"]))
+        d[name] = points_tuple
+
+    return d
