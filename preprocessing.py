@@ -33,7 +33,7 @@ def take_rectangle_of_image(image, rect_centre, rect_width, rect_height):
     left_boundary = np.minimum(width - rect_width, np.maximum(0, left_boundary))
     top_boundary = np.minimum(height - rect_height, np.maximum(0, top_boundary))
     right_boundary = np.minimum(width, np.maximum(rect_width, right_boundary))
-    bottom_boundary = np.minimum(height, np.maximum(rect_height, top_boundary))
+    bottom_boundary = np.minimum(height, np.maximum(rect_height, bottom_boundary))
 
     crop_area = (left_boundary, top_boundary, right_boundary, bottom_boundary)
 
@@ -55,7 +55,7 @@ def draw_rectangle_on_image(image, rect_centre, rect_width, rect_height):
 
 
 def load_json():
-    json_path = r'C:\Users\Mark_\KaggleNature\kaggleNatureConservancy/alb_labels.json'
+    json_path = r'C:\Users\Mark_\KaggleNature\kaggleNatureConservancy\alb_labels.json'
     json_file = open(json_path)
     data = json.load(json_file)
     d = dict()
@@ -69,3 +69,28 @@ def load_json():
         d[name] = points_tuple
 
     return d
+
+
+def plot_points_on_image(folder, n_images):
+    points = load_json()
+
+    list_of_files = os.listdir(folder)
+    n = np.min((len(list_of_files), n_images))
+    list_of_files = list_of_files[:n]
+
+    for file_name in list_of_files:
+        full_path = os.path.join(folder, file_name)
+        im = Image.open(full_path)
+
+        this_points = points[file_name]
+        if len(this_points) is 2:
+            rect_centre = ((this_points[0][0] + this_points[1][0])/2, (this_points[0][1] + this_points[1][1])/2)
+            new_im = take_rectangle_of_image(im, rect_centre, 400, 400)
+            plt.figure()
+            plt.imshow(new_im)
+            plt.show()
+
+        for point in this_points:
+            plt.scatter(point[0], point[1])
+
+    return None
