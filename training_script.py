@@ -113,8 +113,19 @@ def define_network(image_width, image_height, nb_bins):
 
 def train_network(network, images, labels, nb_bins):
     categorical = np_utils.to_categorical(labels, nb_bins)
+    data_gen = image.ImageDataGenerator(rotation_range=10,
+                             horizontal_flip=True,
+                             vertical_flip=True,
+                             width_shift_range=0.2,
+                             height_shift_range=0.2,
+                             featurewise_center=True,
+                             featurewise_std_normalization=True)
+    data_gen.fit(images)
 
-    network.fit(images, categorical, nb_epoch=1000)
+    # fits the model on batches with real-time data augmentation:
+    network.fit_generator(data_gen.flow(images, categorical, batch_size=32),
+                        samples_per_epoch=len(images), nb_epoch=100)
+
     network.save(filepath='saved_model', overwrite=True)
 
 fish_type = 'alb'
@@ -122,8 +133,10 @@ points = preprocessing.load_json(fish_type)
 cropped_images_of_fish = create_cropped_images_of_fish(points)
 no_fish_pictures = subsample_from_no_fish_pictures()
 category = np.concatenate((np.ones(len(cropped_images_of_fish)), np.zeros(len(no_fish_pictures))))
-all_pictures = np.concatenate((np.asarray(cropped_images_of_fish), np.asarray(no_fish_pictures)))
+all_pictures = np.concatenate((np.asarray(cropped_images_of_fish, dtype='float64'), np.asarray(no_fish_pictures, dtype='float64')))
 nn = define_network(256, 256, 2)
+
+
 train_network(nn, all_pictures, category, 2)
 
 # first get json points.
