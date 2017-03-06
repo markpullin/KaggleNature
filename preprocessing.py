@@ -1,6 +1,6 @@
 import os
 
-from PIL import Image
+from PIL import Image, Image
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 
@@ -55,7 +55,7 @@ def draw_rectangle_on_image(image, rect_centre, rect_width, rect_height):
 
 
 def load_json():
-    json_path = r'C:\Users\Mark_\KaggleNature\kaggleNatureConservancy\alb_labels.json'
+    json_path = 'alb_labels.json'
     json_file = open(json_path)
     data = json.load(json_file)
     d = dict()
@@ -84,7 +84,7 @@ def plot_points_on_image(folder, n_images):
 
         this_points = points[file_name]
         if len(this_points) is 2:
-            rect_centre = ((this_points[0][0] + this_points[1][0])/2, (this_points[0][1] + this_points[1][1])/2)
+            rect_centre = ((this_points[0][0] + this_points[1][0]) / 2, (this_points[0][1] + this_points[1][1]) / 2)
             new_im = take_rectangle_of_image(im, rect_centre, 400, 400)
             plt.figure()
             plt.imshow(new_im)
@@ -94,3 +94,22 @@ def plot_points_on_image(folder, n_images):
             plt.scatter(point[0], point[1])
 
     return None
+
+
+def scale_image(img, points):
+    # scale points and image
+    target_width = 256
+    target_height = 128
+
+    original_image = Image.open(img)
+    original_size = original_image.size
+    scaled_image = original_image.resize((target_width, target_height))
+    scaling_factor = (target_width / original_size[0], target_height / original_size[1])
+
+    scaled_points = []
+    for point in points:
+        # TODO: check index -> x/y mapping
+        scaled_point = (point[0] * scaling_factor[0], point[1] * scaling_factor[1])
+        scaled_points.append(scaled_point)
+
+    return scaled_image, scaled_points
