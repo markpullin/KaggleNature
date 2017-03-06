@@ -13,7 +13,9 @@ from preprocessing import scale_image
 
 
 def subsample_from_no_fish_pictures():
-    folder = r"\train\NoF"
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    print(dir_path)
+    folder = os.path.join(dir_path, r"train\NoF")
     files = os.listdir(folder)
     images = []
     for file in files:
@@ -26,7 +28,8 @@ def subsample_from_no_fish_pictures():
 
 
 def create_cropped_images_of_fish(points):
-    root_folder = os.path.abspath(r"train\ALB")
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    root_folder = os.path.join(dir_path, r"train\ALB")
     file_names = points.keys()
 
     cropped_images = []
@@ -112,8 +115,8 @@ def train_network(network, images, labels, nb_bins):
     network.fit(images, categorical, nb_epoch=1000)
     network.save(filepath='saved_model', overwrite=True)
 
-
-points = preprocessing.load_json()
+fish_type = 'alb'
+points = preprocessing.load_json(fish_type)
 cropped_images_of_fish = create_cropped_images_of_fish(points)
 no_fish_pictures = subsample_from_no_fish_pictures()
 category = np.concatenate((np.ones(len(cropped_images_of_fish)), np.zeros(len(no_fish_pictures))))
