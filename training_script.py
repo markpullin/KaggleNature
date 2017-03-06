@@ -1,8 +1,9 @@
 import os
 
 import numpy as np
-from keras.layers import Dense, Convolution2D, MaxPooling2D, Flatten, Activation
+from keras.layers import Dense, Convolution2D, MaxPooling2D, Flatten, Activation, Dropout
 from keras.models import Sequential
+from keras.regularizers import l2
 from keras.utils import np_utils
 from keras.optimizers import SGD
 from keras.preprocessing import image
@@ -85,22 +86,23 @@ def get_bin_number(points, nb_bins_per_dim, image_width, image_height):
 def define_network(image_width, image_height, nb_bins):
     print('Defining model...')
     model = Sequential()
-    model.add(Convolution2D(32, 3, 3, input_shape=(image_height, image_width, 3), activation='relu', border_mode='same'))
+    model.add(Convolution2D(32, 3, 3, input_shape=(image_height, image_width, 3), activation='relu', border_mode='same', W_regularizer=l2(0.0005)))
     model.add(MaxPooling2D())
-    model.add(Convolution2D(64, 3, 3, activation='relu', border_mode='same'))
+    model.add(Convolution2D(64, 3, 3, activation='relu', border_mode='same', W_regularizer=l2(0.0005)))
     model.add(MaxPooling2D())
-    model.add(Convolution2D(64, 3, 3, activation='relu', border_mode='same'))
-    model.add(Convolution2D(128, 3, 3, activation='relu', border_mode='same'))
-    model.add(Convolution2D(128, 3, 3, activation='relu', border_mode='same'))
+    model.add(Convolution2D(64, 3, 3, activation='relu', border_mode='same', W_regularizer=l2(0.0005)))
+    model.add(Convolution2D(128, 3, 3, activation='relu', border_mode='same', W_regularizer=l2(0.0005)))
+    model.add(Convolution2D(128, 3, 3, activation='relu', border_mode='same', W_regularizer=l2(0.0005)))
     model.add(MaxPooling2D())
-    model.add(Convolution2D(256, 3, 3, activation='relu', border_mode='same'))
-    model.add(Convolution2D(256, 3, 3, activation='relu', border_mode='same'))
+    model.add(Convolution2D(256, 3, 3, activation='relu', border_mode='same', W_regularizer=l2(0.0005)))
+    model.add(Convolution2D(256, 3, 3, activation='relu', border_mode='same', W_regularizer=l2(0.0005)))
     model.add(MaxPooling2D())
-    model.add(Convolution2D(256, 3, 3, activation='relu', border_mode='same'))
-    model.add(Convolution2D(256, 3, 3, activation='relu', border_mode='same'))
+    model.add(Convolution2D(256, 3, 3, activation='relu', border_mode='same', W_regularizer=l2(0.0005)))
+    model.add(Convolution2D(256, 3, 3, activation='relu', border_mode='same', W_regularizer=l2(0.0005)))
     model.add(MaxPooling2D())
     model.add(Flatten())
-    model.add(Dense(nb_bins))
+    model.add(Dropout(0.3))
+    model.add(Dense(nb_bins, W_regularizer=l2(0.02)))
     model.add(Activation('softmax'))
 
     optim = SGD(lr=0.0005, momentum=0.9, decay=0.0045, nesterov=True)
