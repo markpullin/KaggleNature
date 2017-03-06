@@ -54,8 +54,8 @@ def draw_rectangle_on_image(image, rect_centre, rect_width, rect_height):
     plt.show()
 
 
-def load_json():
-    json_path = 'alb_labels.json'
+def load_json(path_to_KaggleNature,fish_type):
+    json_path = path_to_KaggleNature + '\\pictures_of_fish\\' + fish_type + '_labels.json';
     json_file = open(json_path)
     data = json.load(json_file)
     d = dict()
