@@ -66,7 +66,8 @@ def load_json(fish_type):
 
         points_tuple = []
         for point in points:
-            points_tuple.append((point["x"], point["y"]))
+            if ("x" in point) and ("y" in point):
+                points_tuple.append((point["x"], point["y"]))
         d[name] = points_tuple
 
     return d

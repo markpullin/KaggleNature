@@ -7,6 +7,7 @@ from keras.regularizers import l2
 from keras.utils import np_utils
 from keras.optimizers import SGD
 from keras.preprocessing import image
+from keras.callbacks import ModelCheckpoint
 import PIL.Image as Image
 
 import preprocessing
@@ -20,24 +21,27 @@ def subsample_from_no_fish_pictures():
     files = os.listdir(folder)
     images = []
     for file in files:
-        img = Image.open(os.path.join(folder, file))
-        x_lower = int(np.ceil(np.random.rand(1) * (img.size[0] - 256)))
-        y_lower = int(np.ceil(np.random.rand(1) * (img.size[1] - 256)))
-        cropped = img.crop((x_lower, y_lower, x_lower + 256, y_lower + 256))
-        images.append(np.asarray(cropped))
+        path = os.path.join(folder, file)
+        if os.path.isfile(path):
+            img = Image.open(path)
+            x_lower = int(np.ceil(np.random.rand(1) * (img.size[0] - 256)))
+            y_lower = int(np.ceil(np.random.rand(1) * (img.size[1] - 256)))
+            cropped = img.crop((x_lower, y_lower, x_lower + 256, y_lower + 256))
+            images.append(np.asarray(cropped))
     return images
 
 
-def create_cropped_images_of_fish(points):
+def create_cropped_images_of_fish(points, fish_type):
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    root_folder = os.path.join(dir_path, r"train\ALB")
+    root_folder = os.path.join(dir_path, os.path.join("train", fish_type.upper()))
     file_names = points.keys()
 
     cropped_images = []
     for file_name in file_names:
         this_points = points[file_name]
-        if len(this_points) == 2:
-            img = Image.open(os.path.join(root_folder, file_name))
+        path = os.path.join(root_folder, file_name)
+        if os.path.isfile(path) and (len(this_points) == 2):
+            img = Image.open(path)
             x_br = np.max((np.min((this_points[0][0], this_points[1][0])) - 50, 0))
             y_br = np.max((np.min((this_points[0][1], this_points[1][1])) - 50, 0))
             x_tl = np.min((np.max((this_points[0][0], this_points[1][0])) + 50, img.size[0]))
@@ -83,7 +87,7 @@ def get_bin_number(points, nb_bins_per_dim, image_width, image_height):
     return bin_ul, bin_br
 
 
-def define_network(image_width, image_height, nb_bins):
+def define_network(image_width, image_height, nb_classes):
     print('Defining model...')
     model = Sequential()
     model.add(Convolution2D(32, 3, 3, input_shape=(image_height, image_width, 3), activation='relu', border_mode='same',
@@ -101,9 +105,12 @@ def define_network(image_width, image_height, nb_bins):
     model.add(Convolution2D(256, 3, 3, activation='relu', border_mode='same', W_regularizer=l2(0.0005)))
     model.add(Convolution2D(256, 3, 3, activation='relu', border_mode='same', W_regularizer=l2(0.0005)))
     model.add(MaxPooling2D())
+    model.add(Convolution2D(256, 3, 3, activation='relu', border_mode='same', W_regularizer=l2(0.0005)))
+    model.add(Convolution2D(256, 3, 3, activation='relu', border_mode='same', W_regularizer=l2(0.0005)))
+    model.add(MaxPooling2D())
     model.add(Flatten())
     model.add(Dropout(0.3))
-    model.add(Dense(nb_bins, W_regularizer=l2(0.02)))
+    model.add(Dense(nb_classes, W_regularizer=l2(0.02)))
     model.add(Activation('softmax'))
 
     optim = SGD(lr=0.0005, momentum=0.9, decay=0.0045, nesterov=True)
@@ -112,8 +119,11 @@ def define_network(image_width, image_height, nb_bins):
     return model
 
 
-def train_network(network, images, labels, nb_bins):
-    categorical = np_utils.to_categorical(labels, nb_bins)
+def train_network(network, images, labels, nb_classes):
+    filepath = "weights-improvement-{epoch:02d}.hdf5"
+    checkpoint = ModelCheckpoint(filepath, verbose=1, save_best_only=True)
+
+    categorical = np_utils.to_categorical(labels, nb_classes)
     data_gen = image.ImageDataGenerator(rotation_range=10,
                                         horizontal_flip=True,
                                         vertical_flip=True,
@@ -125,21 +135,32 @@ def train_network(network, images, labels, nb_bins):
 
     # fits the model on batches with real-time data augmentation:
     network.fit_generator(data_gen.flow(images, categorical, batch_size=32),
-                          samples_per_epoch=len(images), nb_epoch=100)
+                          samples_per_epoch=len(images), nb_epoch=100, callbacks=[checkpoint])
 
     network.save(filepath='saved_model', overwrite=True)
 
 
-fish_type = 'alb'
-points = preprocessing.load_json(fish_type)
-cropped_images_of_fish = create_cropped_images_of_fish(points)
-no_fish_pictures = subsample_from_no_fish_pictures()
-category = np.concatenate((np.ones(len(cropped_images_of_fish)), np.zeros(len(no_fish_pictures))))
-all_pictures = np.concatenate(
-    (np.asarray(cropped_images_of_fish, dtype='float64'), np.asarray(no_fish_pictures, dtype='float64')))
-nn = define_network(256, 256, 2)
+fish_types = ['alb', 'bet', 'dol', 'lag', 'shark', 'yft']
+points = dict()
+cat = np.zeros(0)
+all_pictures = np.zeros((0, 256, 256, 3))
+for idx, fish_type in enumerate(fish_types):
+    print('Loading json for ', fish_type)
+    points[fish_type] = preprocessing.load_json(fish_type)
+    print('json loaded. Getting fish from pictures...')
+    cropped_images_of_fish = create_cropped_images_of_fish(points[fish_type], fish_type)
+    cat = np.concatenate((cat, np.ones(len(cropped_images_of_fish))*idx))
+    all_pictures = np.concatenate((all_pictures, np.asarray(cropped_images_of_fish)))
+    print('Fish pictures obtained')
 
-train_network(nn, all_pictures, category, 2)
+# get pictures of no fish separately - no json needed to locate fish
+no_fish_pictures = subsample_from_no_fish_pictures()
+cat = np.concatenate((cat, np.ones(len(no_fish_pictures))*len(fish_types)))
+all_pictures = np.concatenate(
+    (all_pictures, np.asarray(no_fish_pictures, dtype='float64')))
+nn = define_network(256, 256, len(fish_types)+1)
+
+train_network(nn, all_pictures, cat, len(fish_types)+1)
 
 # first get json points.
 # points = preprocessing.load_json()
