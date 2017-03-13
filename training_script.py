@@ -17,7 +17,7 @@ from preprocessing import scale_image
 def subsample_from_no_fish_pictures():
     dir_path = os.path.dirname(os.path.realpath(__file__))
     print(dir_path)
-    folder = os.path.join(dir_path, r"train\NoF")
+    folder = os.path.join(dir_path, "train","NoF")
     files = os.listdir(folder)
     images = []
     for file in files:
