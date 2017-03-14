@@ -2,6 +2,7 @@ import os
 
 import PIL.Image as Image
 import numpy as np
+import matplotlib.pyplot as plt
 from keras.callbacks import ModelCheckpoint
 from keras.layers import Dense, Convolution2D, MaxPooling2D, Flatten, Activation, BatchNormalization
 from keras.models import Sequential
@@ -151,8 +152,8 @@ def train_network(network, train_images, train_labels, test_images, test_labels,
 
     # fits the model on batches with real-time data augmentation:
     network.fit_generator(data_gen.flow(train_images, train_labels_cat, batch_size=32),
-                          samples_per_epoch=len(train_images), nb_epoch=5, callbacks=[checkpoint],
-                          validation_data=data_gen.flow(test_images, test_labels_cat), nb_val_samples=300)
+                          samples_per_epoch=len(train_images), nb_epoch=20, callbacks=[checkpoint],
+                          validation_data=data_gen.flow(test_images, test_labels_cat),validation_steps = 8)
 
     network.save(filepath='saved_model', overwrite=True)
 
@@ -160,7 +161,6 @@ def train_network(network, train_images, train_labels, test_images, test_labels,
 def split_data_into_train_and_validation(images, category):
     X_train, X_test, y_train, y_test = train_test_split(images, category, train_size=0.8)
     return X_train, y_train, X_test, y_test
-
 
 fish_types = ['alb', 'bet', 'dol', 'lag', 'shark', 'yft']
 points = dict()
@@ -185,6 +185,29 @@ train_images, train_labels, test_images, test_labels = split_data_into_train_and
 nn = define_network(256, 256, len(fish_types) + 1)
 
 train_network(nn, train_images, train_labels, test_images, test_labels, len(fish_types) + 1)
+
+class_totals = np.zeros(len(fish_types)+1)
+for iClass,_ in enumerate(class_totals):
+    class_totals[iClass] = np.sum(test_labels is iClass)
+    
+
+class_probabilities     = nn.predict(test_images,batch_size=32)
+predicted_classes       = np.argmax(class_probabilities)
+incorrect_predictions   = np.not_equal(predicted_classes, test_labels)
+wrong_classes_actual    = test_labels[incorrect_predictions]
+
+plt.figure()
+plt.hist(wrong_classes_actual)
+plt.show()
+
+wrong_classes_predicted = predicted_classes[incorrect_predictions]
+
+
+
+
+
+
+
 
 # first get json points.
 # points = preprocessing.load_json()
