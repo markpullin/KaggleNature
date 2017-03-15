@@ -1,0 +1,4 @@
+__pycache__/
+*.json
+test_stg1/
+train/
