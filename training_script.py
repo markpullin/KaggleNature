@@ -3,8 +3,10 @@ import os
 import PIL.Image as Image
 import numpy as np
 from keras.callbacks import ModelCheckpoint
-from keras.layers import Dense, Convolution2D, MaxPooling2D, Flatten, Activation, BatchNormalization
-from keras.models import Sequential
+from keras.layers import Dense, Convolution2D, MaxPooling2D, Flatten, Activation, BatchNormalization, Input, \
+    GlobalAveragePooling2D, Dropout
+from keras.models import Sequential, Model
+from keras.applications import InceptionV3
 from keras.optimizers import SGD
 from keras.preprocessing import image
 from keras.regularizers import l2
@@ -14,24 +16,41 @@ from sklearn.model_selection import train_test_split
 import preprocessing
 
 
-def subsample_from_no_fish_pictures():
+def get_pre_trained_model(nb_classes):
+    img_width, img_height = 299, 299
+
+    input = Input(shape=(img_width, img_height, 3))
+
+    incep3 = InceptionV3(include_top=False)
+    x = incep3(input)
+    x = GlobalAveragePooling2D()(x)
+    x = Dense(256, activation='relu')(x)
+    x = Dropout(0.5)(x)
+    predict = Dense(nb_classes, activation='softmax')(x)
+    model = Model(inputs=input, outputs=predict)
+    optim = SGD(lr=0.0005, momentum=0.9, decay=0.0045, nesterov=True)
+    model.compile(optimizer=optim, loss='categorical_crossentropy', metrics=['accuracy'])
+    return model
+
+
+def subsample_from_no_fish_pictures(img_size):
     dir_path = os.path.dirname(os.path.realpath(__file__))
     print(dir_path)
-    folder = os.path.join(dir_path, "train","NoF")
+    folder = os.path.join(dir_path, "train", "NoF")
     files = os.listdir(folder)
     images = []
     for file in files:
         path = os.path.join(folder, file)
         if os.path.isfile(path):
             img = Image.open(path)
-            x_lower = int(np.ceil(np.random.rand(1) * (img.size[0] - 256)))
-            y_lower = int(np.ceil(np.random.rand(1) * (img.size[1] - 256)))
-            cropped = img.crop((x_lower, y_lower, x_lower + 256, y_lower + 256))
+            x_lower = int(np.ceil(np.random.rand(1) * (img.size[0] - img_size)))
+            y_lower = int(np.ceil(np.random.rand(1) * (img.size[1] - img_size)))
+            cropped = img.crop((x_lower, y_lower, x_lower + img_size, y_lower + img_size))
             images.append(np.asarray(cropped))
     return images
 
 
-def create_cropped_images_of_fish(points, fish_type):
+def create_cropped_images_of_fish(points, fish_type, img_size):
     dir_path = os.path.dirname(os.path.realpath(__file__))
     root_folder = os.path.join(dir_path, os.path.join("train", fish_type.upper()))
     file_names = points.keys()
@@ -57,7 +76,7 @@ def create_cropped_images_of_fish(points, fish_type):
                 x_br -= (y_length - x_length) / 2
 
             cropped_img = img.crop((x_br, y_br, x_tl, y_tl))
-            cropped_img = cropped_img.resize((256, 256))
+            cropped_img = cropped_img.resize((img_size, img_size))
             cropped_images.append(np.asarray(cropped_img))
     return cropped_images
 
@@ -161,30 +180,31 @@ def split_data_into_train_and_validation(images, category):
     X_train, X_test, y_train, y_test = train_test_split(images, category, train_size=0.8)
     return X_train, y_train, X_test, y_test
 
+if __name__ == "__main__":
+    fish_types = ['alb', 'bet', 'dol', 'lag', 'shark', 'yft']
+    points = dict()
+    cat = np.zeros(0)
+    img_size = 299
+    all_pictures = np.zeros((0, img_size, img_size, 3))
+    for idx, fish_type in enumerate(fish_types):
+        print('Loading json for ', fish_type)
+        points[fish_type] = preprocessing.load_json(fish_type)
+        print('json loaded. Getting fish from pictures...')
+        cropped_images_of_fish = create_cropped_images_of_fish(points[fish_type], fish_type, img_size)
+        cat = np.concatenate((cat, np.ones(len(cropped_images_of_fish)) * idx))
+        all_pictures = np.concatenate((all_pictures, np.asarray(cropped_images_of_fish)))
+        print('Fish pictures obtained')
 
-fish_types = ['alb', 'bet', 'dol', 'lag', 'shark', 'yft']
-points = dict()
-cat = np.zeros(0)
-all_pictures = np.zeros((0, 256, 256, 3))
-for idx, fish_type in enumerate(fish_types):
-    print('Loading json for ', fish_type)
-    points[fish_type] = preprocessing.load_json(fish_type)
-    print('json loaded. Getting fish from pictures...')
-    cropped_images_of_fish = create_cropped_images_of_fish(points[fish_type], fish_type)
-    cat = np.concatenate((cat, np.ones(len(cropped_images_of_fish)) * idx))
-    all_pictures = np.concatenate((all_pictures, np.asarray(cropped_images_of_fish)))
-    print('Fish pictures obtained')
+    # get pictures of no fish separately - no json needed to locate fish
+    no_fish_pictures = subsample_from_no_fish_pictures(img_size)
+    cat = np.concatenate((cat, np.ones(len(no_fish_pictures)) * len(fish_types)))
+    all_pictures = np.concatenate(
+        (all_pictures, np.asarray(no_fish_pictures, dtype='float64')))
 
-# get pictures of no fish separately - no json needed to locate fish
-no_fish_pictures = subsample_from_no_fish_pictures()
-cat = np.concatenate((cat, np.ones(len(no_fish_pictures)) * len(fish_types)))
-all_pictures = np.concatenate(
-    (all_pictures, np.asarray(no_fish_pictures, dtype='float64')))
-
-train_images, train_labels, test_images, test_labels = split_data_into_train_and_validation(all_pictures, cat)
-nn = define_network(256, 256, len(fish_types) + 1)
-
-train_network(nn, train_images, train_labels, test_images, test_labels, len(fish_types) + 1)
+    train_images, train_labels, test_images, test_labels = split_data_into_train_and_validation(all_pictures, cat)
+    #nn = define_network(img_size, img_size, len(fish_types) + 1)
+    nn = get_pre_trained_model(len(fish_types) + 1)
+    train_network(nn, train_images, train_labels, test_images, test_labels, len(fish_types) + 1)
 
 # first get json points.
 # points = preprocessing.load_json()
