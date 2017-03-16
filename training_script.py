@@ -2,6 +2,7 @@ import os
 
 import PIL.Image as Image
 import numpy as np
+import matplotlib.pyplot as plt
 from keras.callbacks import ModelCheckpoint
 from keras.layers import Dense, Convolution2D, MaxPooling2D, Flatten, Activation, BatchNormalization, Input, \
     GlobalAveragePooling2D, Dropout
@@ -170,8 +171,8 @@ def train_network(network, train_images, train_labels, test_images, test_labels,
 
     # fits the model on batches with real-time data augmentation:
     network.fit_generator(data_gen.flow(train_images, train_labels_cat, batch_size=32),
-                          samples_per_epoch=len(train_images), nb_epoch=5, callbacks=[checkpoint],
-                          validation_data=data_gen.flow(test_images, test_labels_cat), nb_val_samples=300)
+                          samples_per_epoch=len(train_images), nb_epoch=20, callbacks=[checkpoint],
+                          validation_data=data_gen.flow(test_images, test_labels_cat),validation_steps = 8)
 
     network.save(filepath='saved_model', overwrite=True)
 
@@ -205,6 +206,22 @@ if __name__ == "__main__":
     #nn = define_network(img_size, img_size, len(fish_types) + 1)
     nn = get_pre_trained_model(len(fish_types) + 1)
     train_network(nn, train_images, train_labels, test_images, test_labels, len(fish_types) + 1)
+
+    class_totals = np.zeros(len(fish_types)+1)
+    for iClass,_ in enumerate(class_totals):
+        class_totals[iClass] = np.sum(test_labels is iClass)
+    
+
+    class_probabilities     = nn.predict(test_images,batch_size=32)
+    predicted_classes       = np.argmax(class_probabilities)
+    incorrect_predictions   = np.not_equal(predicted_classes, test_labels)
+    wrong_classes_actual    = test_labels[incorrect_predictions]
+
+    plt.figure()
+    plt.hist(wrong_classes_actual)
+    plt.show()
+
+    wrong_classes_predicted = predicted_classes[incorrect_predictions]
 
 # first get json points.
 # points = preprocessing.load_json()
