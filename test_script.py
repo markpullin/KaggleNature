@@ -13,10 +13,11 @@ def test(model, image_file_names, scales_per_octave=3, stride=5):
 def test_at_constant_scale(model, image_name, patch_size, stride=5):
     image = Image.open(image_name)
     size = image.size
-    n_images_x = np.floor((size[0] - patch_size[0]) / stride)
-    n_images_y = np.floor((size[1] - patch_size[1]) / stride)
+    n_images_x = np.floor((size[0] - patch_size[0]) / stride).astype(int)
+    n_images_y = np.floor((size[1] - patch_size[1]) / stride).astype(int)
 
-    predictions = np.zeros((n_images_x, n_images_y, model.output_size))
+    predictions = np.zeros((n_images_x, n_images_y, model.output_shape[1])
+    
     for i in range(n_images_x):
         x_start = 0 + i * stride
         for j in range(n_images_y):
