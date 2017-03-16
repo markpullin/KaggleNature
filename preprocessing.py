@@ -40,18 +40,20 @@ def take_rectangle_of_image(image, rect_centre, rect_width, rect_height):
     return image.crop(crop_area)
 
 
-def draw_rectangle_on_image(image, rect_centre, rect_width, rect_height):
-    ax = plt.axes()
-    ax.imshow(image)
+def draw_rectangle_on_image(drw,image, rect_centre, rect_width, rect_height):
+    
     width, height = image.size
 
     top_left_corner = [None, None]
     top_left_corner[0] = np.minimum(width - rect_width, np.maximum(0, rect_centre[0] - rect_width / 2))
     top_left_corner[1] = np.minimum(height - rect_height, np.maximum(0, rect_centre[1] - rect_height / 2))
+    
+    bottom_right_corner = [None,None]
+    bottom_right_corner[0] = np.minimum(width, np.maximum(rect_width, rect_centre[0] + rect_width / 2))
+    bottom_right_corner[1] = np.minimum(height, np.maximum(rect_height, rect_centre[1] + rect_height / 2))
 
-    rect = patches.Rectangle(top_left_corner, rect_width, rect_height, facecolor='None', edgecolor='white')
-    ax.add_patch(rect)
-    plt.show()
+    drw.rectangle((top_left_corner,bottom_right_corner),outline='white')
+    
 
 
 def load_json(fish_type):
