@@ -57,13 +57,12 @@ def test_at_constant_scale(model, image_name, patch_size, stride=5):
             
 def run():
     model = training_script.get_pre_trained_model(7)
-    model.load_weights(r"C:\Users\Fifth\KaggleNature\weights-improvement-99.hdf5")
-    predictions = test_at_constant_scale(model,r"C:\Users\Fifth\KaggleNature\train\NoF\img_00008.jpg",[299,299],stride=50)
+    model.load_weights(r"C:\Users\Mark_\KaggleNature\KaggleNature\weights-improvement-99.hdf5")
+    predictions = test_at_constant_scale(model,r"C:\Users\Mark_\KaggleNature\KaggleNature\train\NoF\img_00008.jpg",[299,299],stride=50)
     
     predicted_class = np.argmax(predictions,axis=2)
     
     plt.figure()
     plt.imshow(predicted_class)
     plt.show()
-    
     

@@ -153,6 +153,11 @@ def define_network(image_width, image_height, nb_classes):
 
 
 def train_network(network, train_images, train_labels, test_images, test_labels, nb_classes):
+    train_images -= np.mean(train_images, axis=(1,2), keepdims=True)
+    test_images -= np.mean(test_images, axis=(1,2), keepdims=True)
+    train_images /= np.std(train_images, axis=(1,2), keepdims=True)
+    test_images /= np.std(test_images, axis=(1, 2), keepdims=True)
+
     filepath = "weights-improvement-{epoch:02d}.hdf5"
     checkpoint = ModelCheckpoint(filepath, verbose=1, save_best_only=True)
 
@@ -162,12 +167,10 @@ def train_network(network, train_images, train_labels, test_images, test_labels,
                                         horizontal_flip=True,
                                         vertical_flip=True,
                                         width_shift_range=0.2,
-                                        height_shift_range=0.2,
-                                        featurewise_center=True,
-                                        featurewise_std_normalization=True,
-                                        samplewise_center=True,
-                                        samplewise_std_normalization=True)
-    data_gen.fit(train_images)
+                                        height_shift_range=0.2)
+
+
+    data_gen.fit(train_images[::10])
 
     # fits the model on batches with real-time data augmentation:
     network.fit_generator(data_gen.flow(train_images, train_labels_cat, batch_size=32),
@@ -186,22 +189,38 @@ if __name__ == "__main__":
     points = dict()
     cat = np.zeros(0)
     img_size = 299
-    all_pictures = np.zeros((0, img_size, img_size, 3))
+    # count pictures
+
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    n_pictures = 0
+    for fish_type in fish_types:
+        root_folder = os.path.join(dir_path, os.path.join("train", fish_type.upper()))
+        n_pictures += len(os.listdir(root_folder))
+
+    n_pictures += len(os.listdir(os.path.join(dir_path, os.path.join("train", "NoF"))))
+    print(n_pictures, ' pictures found')
+    all_pictures = np.zeros((n_pictures, img_size, img_size, 3))
+    i_pic = 0
     for idx, fish_type in enumerate(fish_types):
         print('Loading json for ', fish_type)
         points[fish_type] = preprocessing.load_json(fish_type)
         print('json loaded. Getting fish from pictures...')
         cropped_images_of_fish = create_cropped_images_of_fish(points[fish_type], fish_type, img_size)
         cat = np.concatenate((cat, np.ones(len(cropped_images_of_fish)) * idx))
-        all_pictures = np.concatenate((all_pictures, np.asarray(cropped_images_of_fish)))
+        n_pic = len(cropped_images_of_fish)
+        all_pictures[i_pic:(i_pic+n_pic), :, :, :] = np.asarray(cropped_images_of_fish).astype('float32')
+        i_pic += n_pic
         print('Fish pictures obtained')
 
     # get pictures of no fish separately - no json needed to locate fish
     no_fish_pictures = subsample_from_no_fish_pictures(img_size)
     cat = np.concatenate((cat, np.ones(len(no_fish_pictures)) * len(fish_types)))
-    all_pictures = np.concatenate(
-        (all_pictures, np.asarray(no_fish_pictures, dtype='float64')))
+    n_pic = len(no_fish_pictures)
+    all_pictures[i_pic:(i_pic+n_pic), :, :, :] = np.asarray(no_fish_pictures, dtype='float32')
+    all_pictures = np.delete(all_pictures, np.s_[(n_pic+i_pic):], axis=0)
 
+    print('Picture size is', all_pictures.shape)
+    print('Label size is', cat.shape)
     train_images, train_labels, test_images, test_labels = split_data_into_train_and_validation(all_pictures, cat)
     #nn = define_network(img_size, img_size, len(fish_types) + 1)
     nn = get_pre_trained_model(len(fish_types) + 1)
