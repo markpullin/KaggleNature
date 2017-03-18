@@ -153,12 +153,15 @@ def define_network(image_width, image_height, nb_classes):
 
 
 def train_network(network, train_images, train_labels, test_images, test_labels, nb_classes):
+    
+    
     train_images -= np.mean(train_images, axis=(1,2), keepdims=True)
     test_images -= np.mean(test_images, axis=(1,2), keepdims=True)
     train_images /= np.std(train_images, axis=(1,2), keepdims=True)
     test_images /= np.std(test_images, axis=(1, 2), keepdims=True)
 
-    filepath = "weights-improvement-{epoch:02d}.hdf5"
+
+    filepath = "new_weights-improvement-{epoch:02d}.hdf5"
     checkpoint = ModelCheckpoint(filepath, verbose=1, save_best_only=True)
 
     train_labels_cat = np_utils.to_categorical(train_labels, nb_classes)
@@ -186,7 +189,6 @@ def split_data_into_train_and_validation(images, category):
 
 if __name__ == "__main__":
     fish_types = ['alb', 'bet', 'dol', 'lag', 'shark', 'yft']
-    points = dict()
     cat = np.zeros(0)
     img_size = 299
     # count pictures
@@ -203,25 +205,31 @@ if __name__ == "__main__":
     i_pic = 0
     for idx, fish_type in enumerate(fish_types):
         print('Loading json for ', fish_type)
-        points[fish_type] = preprocessing.load_json(fish_type)
+        points = preprocessing.load_json(fish_type)
         print('json loaded. Getting fish from pictures...')
-        cropped_images_of_fish = create_cropped_images_of_fish(points[fish_type], fish_type, img_size)
+        cropped_images_of_fish = create_cropped_images_of_fish(points, fish_type, img_size)
         cat = np.concatenate((cat, np.ones(len(cropped_images_of_fish)) * idx))
         n_pic = len(cropped_images_of_fish)
         all_pictures[i_pic:(i_pic+n_pic), :, :, :] = np.asarray(cropped_images_of_fish).astype('float32')
         i_pic += n_pic
         print('Fish pictures obtained')
+        cropped_images_of_fish = None
+        points = None
 
     # get pictures of no fish separately - no json needed to locate fish
     no_fish_pictures = subsample_from_no_fish_pictures(img_size)
     cat = np.concatenate((cat, np.ones(len(no_fish_pictures)) * len(fish_types)))
     n_pic = len(no_fish_pictures)
     all_pictures[i_pic:(i_pic+n_pic), :, :, :] = np.asarray(no_fish_pictures, dtype='float32')
-    all_pictures = np.delete(all_pictures, np.s_[(n_pic+i_pic):], axis=0)
+    no_fish_pictures = None
+    
+    all_pictures = all_pictures[:i_pic+n_pic,:,:,:]
 
     print('Picture size is', all_pictures.shape)
     print('Label size is', cat.shape)
     train_images, train_labels, test_images, test_labels = split_data_into_train_and_validation(all_pictures, cat)
+    all_pictures = None
+    
     #nn = define_network(img_size, img_size, len(fish_types) + 1)
     nn = get_pre_trained_model(len(fish_types) + 1)
     train_network(nn, train_images, train_labels, test_images, test_labels, len(fish_types) + 1)
@@ -240,7 +248,7 @@ if __name__ == "__main__":
     plt.hist(wrong_classes_actual)
     plt.show()
 
-    wrong_classes_predicted = predicted_classes[incorrect_predictions]
+    #wrong_classes_predicted = predicted_classes[incorrect_predictions]
 
 # first get json points.
 # points = preprocessing.load_json()

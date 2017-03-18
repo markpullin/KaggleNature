@@ -28,14 +28,15 @@ def test_at_constant_scale(model, image_name, patch_size, stride=5):
     n_images_x = np.ceil((size[0] - patch_size[0]) / stride).astype(int)
     n_images_y = np.ceil((size[1] - patch_size[1]) / stride).astype(int)
     predictions = np.zeros((n_images_x, n_images_y, model.output_shape[1]))
-    
+            
     for i in range(n_images_x):
         x_start = 0 + i * stride
         for j in range(n_images_y):
             y_start = 0 + j * stride
             cropped = image.crop((x_start, y_start, x_start + patch_size[0], y_start + patch_size[0]))
 
-            resized = cropped.resize(patch_size)
+            
+            resized = cropped.resize(model.input_shape[1:3])
             array = np.asarray(resized, dtype='float32')
             
             #plt.figure()
@@ -57,8 +58,9 @@ def test_at_constant_scale(model, image_name, patch_size, stride=5):
             
 def run():
     model = training_script.get_pre_trained_model(7)
-    model.load_weights(r"C:\Users\Mark_\KaggleNature\KaggleNature\weights-improvement-99.hdf5")
-    predictions = test_at_constant_scale(model,r"C:\Users\Mark_\KaggleNature\KaggleNature\train\NoF\img_00008.jpg",[299,299],stride=50)
+    model.load_weights(r"C:\Users\Fifth\KaggleNature\new_weights-improvement-16.hdf5")
+        
+    predictions = test_at_constant_scale(model,r"C:\Users\Fifth\KaggleNature\train\SHARK\img_00033.jpg",[100,100],stride=25)
     
     predicted_class = np.argmax(predictions,axis=2)
     
