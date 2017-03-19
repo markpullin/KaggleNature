@@ -40,8 +40,7 @@ def normalise_image(x):
     return x
 
 
-def test_at_constant_scale(model, image_name, patch_size, stride=5):
-    image = Image.open(image_name)
+def test_at_constant_scale(model, image, patch_size, stride=5):
     #font = Fonts.truetype("arial.ttf", 20)
     #drw = Draw.Draw(image)
 
@@ -84,7 +83,8 @@ if __name__ == "__main__":
     list_dir = os.listdir(test_folder)
     predicted_classes = np.zeros((len(list_dir), len(classes)))
     for idx, file in enumerate(list_dir):
-        predictions = test_at_constant_scale(model, os.path.join(test_folder,file), [600, 600], stride=40)
+        image = Image.open(os.path.join(test_folder,file))
+        predictions = test_at_constant_scale(model, image, [600, 600], stride=40)
         crap_prediction_for_image = predictions[np.argmin(predictions, axis=0)[len(classes)-1], :]
         predicted_classes[idx, :] = crap_prediction_for_image
         print('Predicting number', idx+1, 'of', len(list_dir), '...')

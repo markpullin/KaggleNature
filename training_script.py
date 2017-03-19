@@ -12,6 +12,7 @@ from keras.optimizers import SGD
 from keras.preprocessing import image
 from keras.regularizers import l2
 from keras.utils import np_utils
+from keras.utils import data_utils
 from sklearn.model_selection import train_test_split
 
 import preprocessing
@@ -54,7 +55,7 @@ def subsample_from_no_fish_pictures(img_size):
         path = os.path.join(folder, file)
         if os.path.isfile(path):
             img = Image.open(path)
-            for i in range(0, 4):
+            for i in range(0, 64):
                 x_lower = int(np.ceil(np.random.rand(1) * (img.size[0] - img_size)))
                 y_lower = int(np.ceil(np.random.rand(1) * (img.size[1] - img_size)))
                 cropped = img.crop((x_lower, y_lower, x_lower + img_size, y_lower + img_size))
@@ -67,7 +68,7 @@ def subsample_from_no_fish_pictures(img_size):
                     save_path = os.path.join(val_dir, str(i) + file)
                     cropped.save(save_path)
 
-            for i in range(0, 4):
+            for i in range(0, 64):
                 rand_img_size = img_size * np.random.uniform(0.5, 2)
                 x_lower = int(np.ceil(np.random.rand(1) * (img.size[0] - rand_img_size)))
                 y_lower = int(np.ceil(np.random.rand(1) * (img.size[1] - rand_img_size)))
@@ -93,11 +94,12 @@ def create_cropped_images_of_fish(points, fish_type, img_size):
     val_dir = os.path.join(dir_path, 'valcropped', fish_type)
     if os.path.isdir(save_dir):
         return
-
+    extension = '.jpg'
     val_idx = len(file_names) * 0.9
     os.mkdir(save_dir)
     os.mkdir(val_dir)
     cropped_images = []
+    save_number = 0
     for idx, file_name in enumerate(file_names):
         this_points = points[file_name]
         path = os.path.join(root_folder, file_name)
@@ -109,34 +111,37 @@ def create_cropped_images_of_fish(points, fish_type, img_size):
             y_tl = np.max((this_points[0][1], this_points[1][1])) + 50
             x_range = x_tl - x_br
             y_range = y_tl - y_br
-            x_br_range = np.linspace(x_br - x_range/2, x_br + x_range/2)
-            y_br_range = np.linspace(y_br - y_range / 2, y_br + y_range / 2)
+
+            range_shift = 1/4
+            x_br_range = np.linspace(x_br - x_range*range_shift, x_br + x_range*range_shift, 4)
+            y_br_range = np.linspace(y_br - y_range*range_shift, y_br + y_range*range_shift, 4)
             for x_br_this in x_br_range:
-                for y_br_this in x_br_range:
+                for y_br_this in y_br_range:
                     x_br_corrected = np.max((x_br_this, 0))
                     y_br_corrected = np.max((y_br_this, 0))
-                    x_tl = np.min((x_br_corrected + x_range, img.size[0]))
-                    y_tl = np.min((y_br_corrected + y_range, img.size[1]))
+                    x_tl_corrected = np.min((x_br_corrected + x_range, img.size[0]))
+                    y_tl_corrected = np.min((y_br_corrected + y_range, img.size[1]))
 
                     if x_range > y_range:
-                        y_tl += (x_range - y_range) / 2
-                        y_br -= (x_range - y_range) / 2
+                        y_tl_corrected += (x_range - y_range) / 2
+                        y_br_corrected -= (x_range - y_range) / 2
                     else:
-                        x_tl += (y_range - x_range) / 2
-                        x_br -= (y_range - x_range) / 2
+                        x_tl_corrected += (y_range - x_range) / 2
+                        x_br_corrected -= (y_range - x_range) / 2
 
-                    cropped_img = img.crop((x_br, y_br, x_tl, y_tl))
+                    cropped_img = img.crop((x_br_corrected, y_br_corrected, x_tl_corrected, y_tl_corrected))
                     cropped_img = cropped_img.resize((img_size, img_size))
                     # img_array = np.asarray(cropped_img)
                     # img_array = img_array.astype('float32')
                     # new_img_array = test_script.normalise_image(img_array)
                     # cropped_img = Image.fromarray(new_img_array.astype('uint8'))
                     if idx < val_idx:
-                        save_path = os.path.join(save_dir, file_name)
+                        save_path = os.path.join(save_dir, str(save_number) + extension)
                         cropped_img.save(save_path)
                     else:
-                        save_path = os.path.join(val_dir, file_name)
+                        save_path = os.path.join(val_dir, str(save_number) + extension)
                         cropped_img.save(save_path)
+                    save_number += 1
 
 
 def define_network(image_width, image_height, nb_classes):
@@ -201,7 +206,7 @@ def train_network(network, train_folder, val_folder):
                                                        classes=classes,
                                                        batch_size=32,
                                                        target_size=(299, 299)),
-                          samples_per_epoch=6500, nb_epoch=40, callbacks=[checkpoint],
+                          samples_per_epoch=6500*16, nb_epoch=40, callbacks=[checkpoint],
                           validation_data=data_gen.flow_from_directory(val_folder, target_size=(299, 299), classes=classes),
                           validation_steps=8)
 
@@ -238,7 +243,7 @@ if __name__ == "__main__":
     # get pictures of no fish separately - no json needed to locate fish
     subsample_from_no_fish_pictures(img_size)
 
-    # nn = define_network(img_size, img_size, len(fish_types) + 1)
+    nn = define_network(img_size, img_size, len(fish_types) + 1)
     nn = get_pre_trained_model(len(fish_types) + 1)
     dir_path = os.path.dirname(os.path.realpath(__file__))
     train_folder = os.path.join(dir_path, 'traincropped')
