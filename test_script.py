@@ -16,7 +16,7 @@ def test(model, image_file_names, scales_per_octave=3, stride=5):
 
 def normalise_image(x):
     x -= np.mean(x,axis=(0,1))[np.newaxis,np.newaxis,:]
-    x /= np.std(x,axis=(0,1))[np.newaxis,np.newaxis,:]
+    x /= 255
     return x
 
 def test_at_constant_scale(model, image_name, patch_size, stride=5):
