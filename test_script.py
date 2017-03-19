@@ -5,7 +5,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 import training_script
 import preprocessing as pp
+import csv
+import pandas as pd
+import os
 
+
+def make_submission(probabilities, img_names, fish_names):
+    file_name = 'sumbission'
+    submission = pd.DataFrame(probabilities, columns=fish_names)
+    submission.insert(0, 'image', img_names)
+    submission.head()
+    submission.to_csv(file_name)
 
 def test(model, image_file_names, scales_per_octave=3, stride=5):
     input_size = model.input_size
@@ -48,7 +58,7 @@ def test_at_constant_scale(model, image_name, patch_size, stride=5):
             #array = normalise_image(array)
             array = array[np.newaxis, :, :, :]
             predictions[i, j, :] = model.predict(array, batch_size=1)[np.newaxis, np.newaxis, :]
-            if np.argmax(predictions[i, j, :])  != 0:
+            if predictions[i, j, 0]  < 0.5:
                 print(predictions[i, j, :])
             drw.text((x_start, y_start), str(np.argmax(predictions[i, j, :])), (255, 0, 0), font)
             # drw.text((x_start+0.5*patch_size[0],y_start+0.5*patch_size[1]),str(np.argmax(predictions[i, j, :])),(255,0,0),font)
@@ -58,14 +68,26 @@ def test_at_constant_scale(model, image_name, patch_size, stride=5):
     return predictions
 
 if __name__ == "__main__":
-    model = training_script.get_pre_trained_model(7)
+    classes = ['alb', 'bet', 'dol', 'lag', 'shark', 'yft', 'other', 'NoF']
+    model = training_script.get_pre_trained_model(len(classes))
+
     model.load_weights(r"C:\Users\Fifth\KaggleNature\best_weights.hdf5")
+    test_folder = r"C:\Users\Fifth\KaggleNature\test"
+    list_dir = os.listdir(test_folder)
+    predicted_classes = np.zeros((len(list_dir), len(classes)))
+    for idx, file in enumerate(list_dir):
+        predictions = test_at_constant_scale(model, file, [600, 600], stride=20)
+        new_predictions = np.reshape(predictions, (predictions.shape[0] * predictions.shape[1], len(classes)))
+        crap_prediction_for_image = new_predictions[np.argmin(new_predictions, axis=0)[0], :]
+        predicted_classes[idx, :] = crap_prediction_for_image[:, np.newaxis]
+    make_submission(predicted_classes, list_dir, classes)
 
-    predictions = test_at_constant_scale(model, r"C:\Users\Fifth\KaggleNature\train\SHARK\img_00033.jpg", [175, 175],
-                                         stride=20)
-
-    predicted_class = np.argmax(predictions, axis=2)
-
-    plt.figure()
-    plt.imshow(predicted_class)
-    plt.show()
+    # predicted_class = np.argmax(predictions, axis=2)
+    # plt.figure()
+    # plt.imshow(predicted_class)
+    # plt.show()
+    #
+    # plt.figure()
+    # plt.imshow(predictions[:,:,2])
+    # plt.colorbar()
+    # plt.show()

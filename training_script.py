@@ -188,9 +188,13 @@ def train_network(network, train_folder, val_folder):
                                         )
 
     # fits the model on batches with real-time data augmentation:
-    network.fit_generator(data_gen.flow_from_directory(train_folder, batch_size=32, target_size=(299, 299)),
-                          samples_per_epoch=6500, nb_epoch=200, callbacks=[checkpoint],
-                          validation_data=data_gen.flow_from_directory(val_folder, target_size=(299, 299)),
+    classes = ['alb', 'bet', 'dol', 'lag', 'shark', 'yft', 'other', 'NoF']
+    network.fit_generator(data_gen.flow_from_directory(train_folder,
+                                                       classes=classes,
+                                                       batch_size=32,
+                                                       target_size=(299, 299)),
+                          samples_per_epoch=6500, nb_epoch=40, callbacks=[checkpoint],
+                          validation_data=data_gen.flow_from_directory(val_folder, target_size=(299, 299), classes=classes),
                           validation_steps=8)
 
     network.save(filepath='saved_model', overwrite=True)
@@ -202,7 +206,7 @@ def split_data_into_train_and_validation(images, category):
 
 
 if __name__ == "__main__":
-    fish_types = ['alb', 'bet', 'dol', 'lag', 'shark', 'yft']
+    fish_types = ['alb', 'bet', 'dol', 'lag', 'shark', 'yft','other']
     cat = np.zeros(0)
     img_size = 299
     # count pictures
