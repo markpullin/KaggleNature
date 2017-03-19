@@ -17,6 +17,7 @@ from sklearn.model_selection import train_test_split
 import preprocessing
 import test_script
 
+
 def get_pre_trained_model(nb_classes):
     img_width, img_height = 299, 299
 
@@ -29,7 +30,7 @@ def get_pre_trained_model(nb_classes):
     x = Dropout(0.5)(x)
     predict = Dense(nb_classes, activation='softmax')(x)
     model = Model(inputs=input, outputs=predict)
-    optim = SGD(lr=0.0001, momentum=0.9, decay=0.0045, nesterov=True)
+    optim = SGD(lr=0.0001, momentum=0.9, decay=1e-5, nesterov=True)
     model.compile(optimizer=optim, loss='categorical_crossentropy', metrics=['accuracy'])
     return model
 
@@ -51,31 +52,31 @@ def subsample_from_no_fish_pictures(img_size):
     images = []
     for idx, file in enumerate(files):
         path = os.path.join(folder, file)
-        if os.path.isfile(path):            
+        if os.path.isfile(path):
             img = Image.open(path)
-            for i in range(0,4):
+            for i in range(0, 4):
                 x_lower = int(np.ceil(np.random.rand(1) * (img.size[0] - img_size)))
                 y_lower = int(np.ceil(np.random.rand(1) * (img.size[1] - img_size)))
                 cropped = img.crop((x_lower, y_lower, x_lower + img_size, y_lower + img_size))
-                img = test_script.normalise_image(np.asarray(cropped).astype('float32'))
-                cropped = Image.fromarray(img.astype('uint8'))
+                # img = test_script.normalise_image(np.asarray(cropped).astype('float32'))
+                # cropped = Image.fromarray(img.astype('uint8'))
                 if idx < val_idx:
-                    save_path = os.path.join(save_dir, file)
+                    save_path = os.path.join(save_dir, str(i) + file)
                     cropped.save(save_path)
                 else:
-                    save_path = os.path.join(val_dir, file)
+                    save_path = os.path.join(val_dir, str(i) + file)
                     cropped.save(save_path)
-                    
-            for i in range(0,4):
-                rand_img_size = img_size * np.random.uniform(0.5,2)
+
+            for i in range(0, 4):
+                rand_img_size = img_size * np.random.uniform(0.5, 2)
                 x_lower = int(np.ceil(np.random.rand(1) * (img.size[0] - rand_img_size)))
                 y_lower = int(np.ceil(np.random.rand(1) * (img.size[1] - rand_img_size)))
                 cropped = img.crop((x_lower, y_lower, x_lower + rand_img_size, y_lower + rand_img_size))
-                 if idx < val_idx:
-                    save_path = os.path.join(save_dir, file)
+                if idx < val_idx:
+                    save_path = os.path.join(save_dir, 'zoom' + str(i) + file)
                     cropped.save(save_path)
                 else:
-                    save_path = os.path.join(val_dir, file)
+                    save_path = os.path.join(val_dir, 'zoom' + str(i) + file)
                     cropped.save(save_path)
     return None
 
@@ -93,7 +94,7 @@ def create_cropped_images_of_fish(points, fish_type, img_size):
     if os.path.isdir(save_dir):
         return
 
-    val_idx = len(file_names)*0.9
+    val_idx = len(file_names) * 0.9
     os.mkdir(save_dir)
     os.mkdir(val_dir)
     cropped_images = []
@@ -118,10 +119,10 @@ def create_cropped_images_of_fish(points, fish_type, img_size):
 
             cropped_img = img.crop((x_br, y_br, x_tl, y_tl))
             cropped_img = cropped_img.resize((img_size, img_size))
-            img_array = np.asarray(cropped_img)
-            img_array = img_array.astype('float32')
-            new_img_array = test_script.normalise_image(img_array)
-            cropped_img = Image.fromarray(new_img_array.astype('uint8'))
+            # img_array = np.asarray(cropped_img)
+            # img_array = img_array.astype('float32')
+            # new_img_array = test_script.normalise_image(img_array)
+            # cropped_img = Image.fromarray(new_img_array.astype('uint8'))
             if idx < val_idx:
                 save_path = os.path.join(save_dir, file_name)
                 cropped_img.save(save_path)
@@ -176,8 +177,6 @@ def define_network(image_width, image_height, nb_classes):
 
 
 def train_network(network, train_folder, val_folder):
-
-
     filepath = "new_weights-improvement-{epoch:02d}.hdf5"
     checkpoint = ModelCheckpoint(filepath, verbose=1, save_best_only=True)
 
@@ -188,11 +187,11 @@ def train_network(network, train_folder, val_folder):
                                         height_shift_range=0.2,
                                         )
 
-
     # fits the model on batches with real-time data augmentation:
     network.fit_generator(data_gen.flow_from_directory(train_folder, batch_size=32, target_size=(299, 299)),
-                          samples_per_epoch=6500, nb_epoch=20, callbacks=[checkpoint],
-                          validation_data=data_gen.flow_from_directory(val_folder, target_size=(299, 299)), validation_steps=8)
+                          samples_per_epoch=6500, nb_epoch=200, callbacks=[checkpoint],
+                          validation_data=data_gen.flow_from_directory(val_folder, target_size=(299, 299)),
+                          validation_steps=8)
 
     network.save(filepath='saved_model', overwrite=True)
 
@@ -234,18 +233,18 @@ if __name__ == "__main__":
     val_folder = os.path.join(dir_path, 'valcropped')
     train_network(nn, train_folder, val_folder)
 
-    class_totals = np.zeros(len(fish_types) + 1)
-    for iClass, _ in enumerate(class_totals):
-        class_totals[iClass] = np.sum(test_labels is iClass)
-
-    class_probabilities = nn.predict(test_images, batch_size=32)
-    predicted_classes = np.argmax(class_probabilities)
-    incorrect_predictions = np.not_equal(predicted_classes, test_labels)
-    wrong_classes_actual = test_labels[incorrect_predictions]
-
-    plt.figure()
-    plt.hist(wrong_classes_actual)
-    plt.show()
+    # class_totals = np.zeros(len(fish_types) + 1)
+    # for iClass, _ in enumerate(class_totals):
+    #     class_totals[iClass] = np.sum(test_labels is iClass)
+    #
+    # class_probabilities = nn.predict(test_images, batch_size=32)
+    # predicted_classes = np.argmax(class_probabilities)
+    # incorrect_predictions = np.not_equal(predicted_classes, test_labels)
+    # wrong_classes_actual = test_labels[incorrect_predictions]
+    #
+    # plt.figure()
+    # plt.hist(wrong_classes_actual)
+    # plt.show()
 
     # wrong_classes_predicted = predicted_classes[incorrect_predictions]
 
