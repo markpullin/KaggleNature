@@ -29,7 +29,7 @@ def get_pre_trained_model(nb_classes):
     x = Dropout(0.5)(x)
     predict = Dense(nb_classes, activation='softmax')(x)
     model = Model(inputs=input, outputs=predict)
-    optim = SGD(lr=0.0005, momentum=0.9, decay=0.0045, nesterov=True)
+    optim = SGD(lr=0.0001, momentum=0.9, decay=0.0045, nesterov=True)
     model.compile(optimizer=optim, loss='categorical_crossentropy', metrics=['accuracy'])
     return model
 
@@ -51,19 +51,32 @@ def subsample_from_no_fish_pictures(img_size):
     images = []
     for idx, file in enumerate(files):
         path = os.path.join(folder, file)
-        if os.path.isfile(path):
+        if os.path.isfile(path):            
             img = Image.open(path)
-            x_lower = int(np.ceil(np.random.rand(1) * (img.size[0] - img_size)))
-            y_lower = int(np.ceil(np.random.rand(1) * (img.size[1] - img_size)))
-            cropped = img.crop((x_lower, y_lower, x_lower + img_size, y_lower + img_size))
-            img = test_script.normalise_image(np.asarray(cropped).astype('float32'))
-            cropped = Image.fromarray(img.astype('uint8'))
-            if idx < val_idx:
-                save_path = os.path.join(save_dir, file)
-                cropped.save(save_path)
-            else:
-                save_path = os.path.join(val_dir, file)
-                cropped.save(save_path)
+            for i in range(0,4):
+                x_lower = int(np.ceil(np.random.rand(1) * (img.size[0] - img_size)))
+                y_lower = int(np.ceil(np.random.rand(1) * (img.size[1] - img_size)))
+                cropped = img.crop((x_lower, y_lower, x_lower + img_size, y_lower + img_size))
+                img = test_script.normalise_image(np.asarray(cropped).astype('float32'))
+                cropped = Image.fromarray(img.astype('uint8'))
+                if idx < val_idx:
+                    save_path = os.path.join(save_dir, file)
+                    cropped.save(save_path)
+                else:
+                    save_path = os.path.join(val_dir, file)
+                    cropped.save(save_path)
+                    
+            for i in range(0,4):
+                rand_img_size = img_size * np.random.uniform(0.5,2)
+                x_lower = int(np.ceil(np.random.rand(1) * (img.size[0] - rand_img_size)))
+                y_lower = int(np.ceil(np.random.rand(1) * (img.size[1] - rand_img_size)))
+                cropped = img.crop((x_lower, y_lower, x_lower + rand_img_size, y_lower + rand_img_size))
+                 if idx < val_idx:
+                    save_path = os.path.join(save_dir, file)
+                    cropped.save(save_path)
+                else:
+                    save_path = os.path.join(val_dir, file)
+                    cropped.save(save_path)
     return None
 
 
@@ -172,7 +185,8 @@ def train_network(network, train_folder, val_folder):
                                         horizontal_flip=True,
                                         vertical_flip=True,
                                         width_shift_range=0.2,
-                                        height_shift_range=0.2)
+                                        height_shift_range=0.2,
+                                        )
 
 
     # fits the model on batches with real-time data augmentation:
@@ -200,13 +214,11 @@ if __name__ == "__main__":
         root_folder = os.path.join(dir_path, os.path.join("train", fish_type.upper()))
         n_pictures += len(os.listdir(root_folder))
 
-    print(n_pictures, ' pictures found')
-
     for idx, fish_type in enumerate(fish_types):
         print('Loading json for ', fish_type)
         points = preprocessing.load_json(fish_type)
         print('json loaded. Getting fish from pictures...')
-        n_fish = create_cropped_images_of_fish(points, fish_type, img_size)
+        create_cropped_images_of_fish(points, fish_type, img_size)
 
         print('Fish pictures obtained')
         cropped_images_of_fish = None
