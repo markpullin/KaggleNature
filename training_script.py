@@ -103,32 +103,40 @@ def create_cropped_images_of_fish(points, fish_type, img_size):
         path = os.path.join(root_folder, file_name)
         if os.path.isfile(path) and (len(this_points) == 2):
             img = Image.open(path)
-            x_br = np.max((np.min((this_points[0][0], this_points[1][0])) - 50, 0))
-            y_br = np.max((np.min((this_points[0][1], this_points[1][1])) - 50, 0))
-            x_tl = np.min((np.max((this_points[0][0], this_points[1][0])) + 50, img.size[0]))
-            y_tl = np.min((np.max((this_points[0][1], this_points[1][1])) + 50, img.size[1]))
-            # make this into a square!
-            x_length = x_tl - x_br
-            y_length = y_tl - y_br
-            if x_length > y_length:
-                y_tl += (x_length - y_length) / 2
-                y_br -= (x_length - y_length) / 2
-            else:
-                x_tl += (y_length - x_length) / 2
-                x_br -= (y_length - x_length) / 2
+            x_br = np.min((this_points[0][0], this_points[1][0])) - 50
+            y_br = np.min((this_points[0][1], this_points[1][1])) - 50
+            x_tl = np.max((this_points[0][0], this_points[1][0])) + 50
+            y_tl = np.max((this_points[0][1], this_points[1][1])) + 50
+            x_range = x_tl - x_br
+            y_range = y_tl - y_br
+            x_br_range = np.linspace(x_br - x_range/2, x_br + x_range/2)
+            y_br_range = np.linspace(y_br - y_range / 2, y_br + y_range / 2)
+            for x_br_this in x_br_range:
+                for y_br_this in x_br_range:
+                    x_br_corrected = np.max((x_br_this, 0))
+                    y_br_corrected = np.max((y_br_this, 0))
+                    x_tl = np.min((x_br_corrected + x_range, img.size[0]))
+                    y_tl = np.min((y_br_corrected + y_range, img.size[1]))
 
-            cropped_img = img.crop((x_br, y_br, x_tl, y_tl))
-            cropped_img = cropped_img.resize((img_size, img_size))
-            # img_array = np.asarray(cropped_img)
-            # img_array = img_array.astype('float32')
-            # new_img_array = test_script.normalise_image(img_array)
-            # cropped_img = Image.fromarray(new_img_array.astype('uint8'))
-            if idx < val_idx:
-                save_path = os.path.join(save_dir, file_name)
-                cropped_img.save(save_path)
-            else:
-                save_path = os.path.join(val_dir, file_name)
-                cropped_img.save(save_path)
+                    if x_range > y_range:
+                        y_tl += (x_range - y_range) / 2
+                        y_br -= (x_range - y_range) / 2
+                    else:
+                        x_tl += (y_range - x_range) / 2
+                        x_br -= (y_range - x_range) / 2
+
+                    cropped_img = img.crop((x_br, y_br, x_tl, y_tl))
+                    cropped_img = cropped_img.resize((img_size, img_size))
+                    # img_array = np.asarray(cropped_img)
+                    # img_array = img_array.astype('float32')
+                    # new_img_array = test_script.normalise_image(img_array)
+                    # cropped_img = Image.fromarray(new_img_array.astype('uint8'))
+                    if idx < val_idx:
+                        save_path = os.path.join(save_dir, file_name)
+                        cropped_img.save(save_path)
+                    else:
+                        save_path = os.path.join(val_dir, file_name)
+                        cropped_img.save(save_path)
 
 
 def define_network(image_width, image_height, nb_classes):
