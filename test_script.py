@@ -71,7 +71,7 @@ def test_at_constant_scale(model, image, patch_size, stride=5):
             #drw.rectangle([x_start, y_start, x_start + patch_size[0], y_start + patch_size[1]], outline='white')
     #image.show()
 
-    predictions = model.predict(cropped_images_array, batch_size=32)
+    predictions = model.predict(cropped_images_array, batch_size=128)
     return predictions
 
 if __name__ == "__main__":
