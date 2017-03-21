@@ -71,7 +71,8 @@ if __name__ == "__main__":
     test_folder = r"C:\Users\Fifth\KaggleNature\test"
     list_dir = os.listdir(test_folder)
     for fish in classes:
-        folder = os.path.join(r"C:\Users\Fifth\KaggleNature\train", fish)
+        #folder = os.path.join(r"C:\Users\Fifth\KaggleNature\train", fish)
+        folder = r"C:\Users\Fifth\KaggleNature\test"
         list_dir = os.listdir(folder)
         for idx, file in enumerate(list_dir):
             print(idx)
